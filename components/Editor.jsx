@@ -24,8 +24,22 @@ export default function Editor({ code, setCode, onExplainLine, language, onCurso
       if (lastLine.trim()) {
         onExplainLine(fullCode, lastLine);
       }
-    }, 1200)
+    }, 800) // Reduced from 1200 for faster real-time feel
   ).current;
+
+  // Real-time character/word narration
+  const speakTypedText = (text) => {
+    if (!window.speechSynthesis) return;
+    
+    // Create a very brief utterance for the character/word
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 1.5; // Fast speed for typing feedback
+    utterance.volume = 0.5; // Slightly quieter than explanations
+    
+    // Briefly stop current typing sound to play the new one (low latency)
+    // Note: We don't cancel the whole queue because we don't want to cut off AI explanations
+    window.speechSynthesis.speak(utterance);
+  };
 
   const handleEditorChange = (value, event) => {
     setCode(value || "");
@@ -33,17 +47,26 @@ export default function Editor({ code, setCode, onExplainLine, language, onCurso
     const changes = event.changes;
     if (changes && changes.length > 0) {
       const text = changes[0].text;
+      
+      // Real-time narration of the typed text
+      if (text) {
+        if (text === '\n') {
+          speakTypedText("New line");
+        } else if (text.trim().length > 0) {
+          speakTypedText(text);
+        }
+      }
+
       const model = monacoRef.current?.getModel();
       
       if (model) {
-        const lines = value.split('\n');
-        // If Enter was pressed, explain the previous line
+        // If Enter was pressed, explain the previous line immediately (no debounce)
         if (text.includes('\n')) {
           const lineNumber = monacoRef.current.getPosition().lineNumber;
           const previousLine = model.getLineContent(Math.max(1, lineNumber - 1));
-          debouncedExplain(value, previousLine);
+          onExplainLine(value, previousLine); 
         } else {
-          // Otherwise explain current line
+          // Otherwise explain current line with debounce
           const currentLine = model.getLineContent(monacoRef.current.getPosition().lineNumber);
           debouncedExplain(value, currentLine);
         }
