@@ -4,16 +4,18 @@ import Editor from '../components/Editor';
 import Terminal from '../components/Terminal';
 import FlowchartPanel from '../components/FlowchartPanel';
 import VoiceControls from '../components/VoiceControls';
+import StdinModal, { requiresStdin } from '../components/StdinModal';
 
 export default function Home() {
   const [code, setCode] = useState('// Start typing your code here...\nfunction hello() {\n  console.log("world!");\n}\n');
   const [explanations, setExplanations] = useState([{ text: "Welcome to CodeSplain AI. Type some code, and I'll explain it." }]);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [ttsEnabled, setTtsEnabled] = useState(false);
+  const [ttsEnabled, setTtsEnabled] = useState(true);
   const [language, setLanguage] = useState('javascript');
   const [currentCursorLine, setCurrentCursorLine] = useState('');
   const [isExplainingAll, setIsExplainingAll] = useState(false);
   const [activeTab, setActiveTab] = useState('terminal'); // 'terminal' | 'flowchart'
+  const [showStdinModal, setShowStdinModal] = useState(false);
   const terminalRef = useRef(null);
 
   useEffect(() => {
@@ -57,7 +59,16 @@ export default function Home() {
     }
   };
 
-  const handleRunCode = async () => {
+  const handleRunCode = () => {
+    if (requiresStdin(code, language)) {
+      setShowStdinModal(true);
+    } else {
+      executeWithStdin('');
+    }
+  };
+
+  const executeWithStdin = async (stdin) => {
+    setShowStdinModal(false);
     setIsProcessing(true);
     addExplanation(`[Compiling & Executing as ${language}...]`, false);
 
@@ -65,7 +76,7 @@ export default function Home() {
       const response = await fetch('/api/execute-code', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code, language })
+        body: JSON.stringify({ code, language, stdin })
       });
       
       const data = await response.json();
@@ -234,6 +245,14 @@ export default function Home() {
            </div>
         </div>
       </main>
+
+      {/* Render the StdinModal if required */}
+      {showStdinModal && (
+        <StdinModal 
+          onSubmit={(input) => executeWithStdin(input)} 
+          onCancel={() => setShowStdinModal(false)} 
+        />
+      )}
     </div>
   );
 }

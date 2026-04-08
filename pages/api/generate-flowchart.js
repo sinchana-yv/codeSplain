@@ -26,11 +26,13 @@ Code:
 ${code}
 
 Rules:
-1. Return ONLY valid Mermaid syntax starting with "graph TD;".
+1. Return ONLY valid Mermaid syntax starting with "graph TD".
 2. No markdown wrappers (\`\`\`mermaid) around your response.
-3. Node labels MUST be simple English words ONLY. absolutely NO quotes ("), parentheses (), brackets [], equals =, or symbols inside node labels.
-4. Correct example: A[User Input] --> B[If x is 10]
-5. BAD example: A[user_input("Enter")] --> B[__main__==true]
+3. Node labels MUST be simple English words ONLY. Absolutely NO quotes ("), parentheses (), brackets [], equals =, or symbols inside node labels.
+4. Node IDs must be single words with NO spaces (e.g. A, B, StartNode, EndNode). NEVER use multi-word IDs like "Note Start".
+5. Do NOT include any "class" or "style" or "classDef" statements.
+6. Correct example: A[User Input] --> B[If x is 10]
+7. BAD example: A[user_input("Enter")] --> B[__main__==true]
 `;
 
     const chatCompletion = await groq.chat.completions.create({
@@ -53,9 +55,39 @@ Rules:
       rawOutput = `graph TD;\n  A[Incomplete Graph] --> B[Model yielded invalid syntax];`;
     }
 
+    // Sanitize common LLM mermaid mistakes
+    rawOutput = sanitizeMermaid(rawOutput);
+
     return res.status(200).json({ mermaidSyntax: rawOutput });
   } catch (error) {
     console.error("Flowchart API error:", error);
     return res.status(500).json({ error: "Failed to generate flowchart from Groq." });
   }
+}
+
+/**
+ * Strip or fix lines that commonly break Mermaid parsing:
+ *  - Remove `class`, `classDef`, and `style` lines (LLMs love to add these with bad syntax)
+ *  - Remove stray quotes inside node labels
+ *  - Collapse multiple spaces in node IDs
+ */
+function sanitizeMermaid(src) {
+  return src
+    .split('\n')
+    .filter(line => {
+      const trimmed = line.trim();
+      // Remove class / classDef / style lines – they frequently have invalid syntax
+      if (/^class\s/i.test(trimmed)) return false;
+      if (/^classDef\s/i.test(trimmed)) return false;
+      if (/^style\s/i.test(trimmed)) return false;
+      return true;
+    })
+    .map(line => {
+      // Remove all double quotes from the line to prevent syntax errors (e.g. A[Print "good Afternoon"])
+      line = line.replace(/"/g, '');
+      // Remove stray parentheses inside labels e.g. A[func()] -> A[func]
+      line = line.replace(/\(\)/g, '');
+      return line;
+    })
+    .join('\n');
 }
