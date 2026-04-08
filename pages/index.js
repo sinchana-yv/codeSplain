@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import Head from 'next/head';
 import Editor from '../components/Editor';
 import Terminal from '../components/Terminal';
+import FlowchartPanel from '../components/FlowchartPanel';
 import VoiceControls from '../components/VoiceControls';
 
 export default function Home() {
@@ -12,6 +13,7 @@ export default function Home() {
   const [language, setLanguage] = useState('javascript');
   const [currentCursorLine, setCurrentCursorLine] = useState('');
   const [isExplainingAll, setIsExplainingAll] = useState(false);
+  const [activeTab, setActiveTab] = useState('terminal'); // 'terminal' | 'flowchart'
   const terminalRef = useRef(null);
 
   useEffect(() => {
@@ -190,11 +192,47 @@ export default function Home() {
           onCursorLineChange={setCurrentCursorLine}
         />
         
-        <Terminal 
-          explanations={explanations} 
-          isProcessing={isProcessing} 
-          terminalRef={terminalRef} 
-        />
+        <div className="flex flex-col min-h-0 space-y-2">
+           {/* Tab Switcher */}
+           <div className="flex space-x-2 shrink-0">
+              <button 
+                onClick={() => setActiveTab('terminal')}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
+                  activeTab === 'terminal' 
+                  ? 'bg-zinc-800 text-green-400 border border-green-800 border-b-transparent shadow-inner' 
+                  : 'bg-zinc-900 text-zinc-500 hover:text-zinc-300 border border-gray-800 border-b-transparent'
+                }`}
+              >
+                 Terminal
+              </button>
+              <button 
+                onClick={() => setActiveTab('flowchart')}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
+                  activeTab === 'flowchart' 
+                  ? 'bg-zinc-800 text-purple-400 border border-purple-800 border-b-transparent shadow-inner' 
+                  : 'bg-zinc-900 text-zinc-500 hover:text-zinc-300 border border-gray-800 border-b-transparent'
+                }`}
+              >
+                 Flowchart
+              </button>
+           </div>
+           
+           {/* Dynamic View */}
+           <div className="flex-1 min-h-0">
+              {activeTab === 'terminal' ? (
+                <Terminal 
+                  explanations={explanations} 
+                  isProcessing={isProcessing} 
+                  terminalRef={terminalRef} 
+                />
+              ) : (
+                <FlowchartPanel 
+                  code={code} 
+                  language={language} 
+                />
+              )}
+           </div>
+        </div>
       </main>
     </div>
   );
