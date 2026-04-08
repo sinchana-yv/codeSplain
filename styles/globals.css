@@ -1,0 +1,11 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    @apply bg-black text-white m-0 p-0 font-sans;
+  }
+}
+
+::selection {
+  background: rgba(0, 255, 0, 0.3);
+}
